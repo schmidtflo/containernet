@@ -10,7 +10,7 @@ from functools import partial
 from os import O_NONBLOCK
 from resource import getrlimit, setrlimit, RLIMIT_NPROC, RLIMIT_NOFILE
 from select import poll, POLLIN, POLLHUP
-from subprocess import call, check_call, Popen, PIPE, STDOUT
+from subprocess import call,run, check_call, Popen, PIPE, STDOUT
 from sys import exit  # pylint: disable=redefined-builtin
 from time import sleep
 
@@ -80,7 +80,7 @@ except ImportError:
 def run( cmd ):
     """Simple interface to subprocess.call()
        cmd: list of command params"""
-    return call( cmd.split( ' ' ) )
+    return run( cmd.split( ' ' ) )
 
 def checkRun( cmd ):
     """Simple interface to subprocess.check_call()
@@ -554,8 +554,11 @@ def mountCgroups():
     mounts = quietRun( 'grep cgroup /proc/mounts' )
     cgdir = '/sys/fs/cgroup'
     csdir = cgdir + '/cpuset'
-    if ('cgroup %s' % cgdir not in mounts and
-            'cgroups %s' % cgdir not in mounts):
+    if (('cgroup %s' % cgdir not in mounts and
+            'cgroups %s' % cgdir not in mounts)):
+        # You may be here because your system is running on cgroups2 instead of cgroups 1
+        # This is commonly the case in modern systems, e.g. Changed to cgroup2 in 21.10
+        # Alternatively, you may be here because the cgroup_parent of your nodes is wrong
         raise Exception( "cgroups not mounted on " + cgdir )
     if 'cpuset %s' % csdir not in mounts:
         errRun( 'mkdir -p ' + csdir )

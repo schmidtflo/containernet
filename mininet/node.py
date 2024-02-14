@@ -101,7 +101,7 @@ class Node( object ):
         # Stash configuration parameters for future reference
         self.params = params
 
-        # dict of port numbers to interfacse
+        # dict of port numbers to interfaces
         self.intfs = {}
 
         # dict of interfaces to port numbers
@@ -256,7 +256,7 @@ class Node( object ):
            size: maximum number of characters to return"""
         count = len( self.readbuf )
         if count < size:
-            data = os.read( self.stdout.fileno(), size - count )
+            data = os.read( self.stdout.fileno(), size - count ) # This line blocks if you try to reuse the shell
             self.readbuf += self.decoder.decode( data )
         if size >= len( self.readbuf ):
             result = self.readbuf
@@ -269,7 +269,9 @@ class Node( object ):
     def readline( self ):
         """Buffered readline from node, potentially blocking.
            returns: line (minus newline) or None"""
+
         self.readbuf += self.read( 1024 )
+
         if '\n' not in self.readbuf:
             return None
         pos = self.readbuf.find( '\n' )
@@ -287,7 +289,11 @@ class Node( object ):
         self.unmountPrivateDirs()
         if self.shell:
             if self.shell.poll() is None:
+                # PGID is the same as the PID of the first process in the process group.
+                # This ID is used for signaling related processes.
+                # If a command starts just one process, its PID and PGID are the same.
                 os.killpg( self.shell.pid, signal.SIGHUP )
+
         self.cleanup()
 
     def stop( self, deleteIntfs=False ):
@@ -843,9 +849,11 @@ class Docker ( Host ):
             cap_add=self.cap_add,  # see docker-py docu
             sysctls=self.sysctls,   # see docker-py docu
             storage_opt=self.storage_opt,
-            # Assuming Docker uses the cgroupfs driver, we set the parent to safely
+            # Assuming Docker uses the systemd driver, we set the parent to safely
             # access cgroups when modifying resource limits.
+            # If you're using cgroupfs use /docker instead
             cgroup_parent='/docker',
+            # cgroup_parent='mininetcgroup.slice',
             shm_size=self.shm_size,
             nano_cpus=self.nano_cpus,
             device_requests=self.device_requests,

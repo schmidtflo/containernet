@@ -100,6 +100,8 @@ from itertools import chain, groupby
 from math import ceil
 
 from mininet.cli import CLI
+from mininet.fault_controllers.BaseFaultController import BaseFaultControllerStarter
+from mininet.fault_controllers.ConfigFileFaultController import ConfigFileFaultControllerStarter
 from mininet.log import info, error, debug, output, warn
 from mininet.node import ( Node, Docker, Host, OVSKernelSwitch,
                            DefaultController, Controller, OVSSwitch, OVSBridge )
@@ -124,12 +126,13 @@ class Mininet( object ):
     "Network emulation with hosts spawned in network namespaces."
 
     # pylint: disable=too-many-arguments
-    def __init__( self, topo=None, switch=OVSKernelSwitch, host=Host,
-                  controller=DefaultController, link=Link, intf=Intf,
-                  build=True, xterms=False, cleanup=False, ipBase='10.0.0.0/8',
-                  inNamespace=False,
-                  autoSetMacs=False, autoStaticArp=False, autoPinCpus=False,
-                  listenPort=None, waitConnected=False ):
+    def __init__(self, topo=None, switch=OVSKernelSwitch, host=Host,
+                 controller=DefaultController, link=Link, intf=Intf,
+                 faultControllerStarter=ConfigFileFaultControllerStarter,
+                 build=True, xterms=False, cleanup=False, ipBase='10.0.0.0/8',
+                 inNamespace=False,
+                 autoSetMacs=False, autoStaticArp=False, autoPinCpus=False,
+                 listenPort=None, waitConnected=False, faultFilepath=None):
         """Create Mininet object.
            topo: Topo (topology) object or None
            switch: default Switch class
@@ -170,6 +173,9 @@ class Mininet( object ):
         self.nextCore = 0  # next core for pinning hosts to CPUs
         self.listenPort = listenPort
         self.waitConn = waitConnected
+
+        self.faultFilepath = faultFilepath
+        self.faultControllerStarter = faultControllerStarter
 
         self.hosts = []
         self.switches = []
@@ -525,7 +531,7 @@ class Mininet( object ):
             # it needs to be done somewhere.
         info( '\n' )
 
-    def buildFromTopo( self, topo=None ):
+    def buildFromTopo( self, topo=None ): # is this relevant for us?
         """Build mininet from a topology object
            At the end of this function, everything should be connected
            and up."""
@@ -616,6 +622,7 @@ class Mininet( object ):
                 if src != dst:
                     src.setARP( ip=dst.IP(), mac=dst.MAC() )
 
+
     def start( self ):
         "Start controller and switches."
         if not self.built:
@@ -640,6 +647,11 @@ class Mininet( object ):
         info( '\n' )
         if self.waitConn:
             self.waitConnected( self.waitConn )
+        if self.faultFilepath:
+            if not issubclass(self.faultControllerStarter, BaseFaultControllerStarter):
+                error("nets faultControllerStarter is not a BaseFaultControllerStarter. Did you pass in the Controller by accident?\n")
+            self.faultControllerStarter = self.faultControllerStarter(self, self.faultFilepath)
+            self.faultControllerStarter.go()
 
     def stop( self ):
         "Stop the controller(s), switches and hosts"
@@ -676,7 +688,8 @@ class Mininet( object ):
             info( host.name + ' ' )
             host.terminate()
         info( '\n*** Done\n' )
-
+        if self.faultFilepath is not None:
+            self.faultControllerStarter.stop()
 
     def run( self, test, *args, **kwargs ):
         "Perform a complete start/test/stop cycle."
@@ -712,6 +725,12 @@ class Mininet( object ):
 
     # XXX These test methods should be moved out of this class.
     # Probably we should create a tests.py for them
+
+    def isFaultControllerActive(self):
+        if self.faultControllerStarter is None:
+            return False
+        else:
+            return self.faultControllerStarter.is_active()
 
     @staticmethod
     def _parsePing( pingOutput ):

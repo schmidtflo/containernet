@@ -18,14 +18,33 @@ CC ?= cc
 
 CFLAGS += -Wall -Wextra
 
-all: test
+all: codecheck test
 
 clean:
 	rm -rf build dist *.egg-info *.pyc $(MNEXEC) $(MANPAGES) $(DOCDIRS)
 
+codecheck: $(PYSRC)
+	-echo "Running code check"
+	util/versioncheck.py
+	pyflakes $(PYSRC)
+	pylint --rcfile=.pylint $(PYSRC)
+#	Exclude miniedit from pep8 checking for now
+	pep8 --repeat --ignore=$(P8IGN) `ls $(PYSRC) | grep -v miniedit.py`
+
+errcheck: $(PYSRC)
+	-echo "Running check for errors only"
+	pyflakes $(PYSRC)
+	pylint -E --rcfile=.pylint $(PYSRC)
+
 test: $(MININET) $(TEST)
 	-echo "Running tests"
-	py.test -v mininet/test/test_containernet.py
+	mininet/test/test_nets.py
+	mininet/test/test_hifi.py
+
+slowtest: $(MININET)
+	-echo "Running slower tests (walkthrough, examples)"
+	mininet/test/test_walkthrough.py -v
+	mininet/examples/test/runner.py -v
 
 mnexec: mnexec.c $(MN) mininet/net.py
 	$(CC) $(CFLAGS) $(LDFLAGS) \

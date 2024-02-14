@@ -22,8 +22,9 @@ LEVELS = { 'debug': logging.DEBUG,
 # change this to logging.INFO to get printouts when running unit tests
 LOGLEVELDEFAULT = OUTPUT
 
+
 # default: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-LOGMSGFORMAT = '%(message)s'
+LOGMSGFORMAT = '%(filename)s %(lineno)d  %(message)s'
 
 
 # Modified from python2.5/__init__.py
@@ -72,6 +73,8 @@ class Singleton( type ):
         if cls.instance is None:
             cls.instance = super( Singleton, cls ).__call__( *args, **kw )
         return cls.instance
+
+
 
 
 class MininetLogger( Logger, object ):
@@ -147,12 +150,15 @@ def makeListCompatible( fn ):
     """Return a new function allowing fn( 'a 1 b' ) to be called as
        newfn( 'a', 1, 'b' )"""
 
-    def newfn( *args ):
+    def newfn( *args,  **kwargs):
         "Generated function. Closure-ish."
+        # Add stacklevel argument, or all linenos will point to
+        # this function
+        kwargs['stacklevel'] = kwargs.get('stacklevel', 1) + 1
         if len( args ) == 1:
-            return fn( *args )
+            return fn( *args, **kwargs )
         args = ' '.join( str( arg ) for arg in args )
-        return fn( args )
+        return fn( args, **kwargs )
 
     # Fix newfn's name and docstring
     setattr( newfn, '__name__', fn.__name__ )
@@ -167,6 +173,7 @@ lg = logging.getLogger( "mininet" )
 _loggers = lg.info, lg.output, lg.warning, lg.error, lg.debug
 _loggers = tuple( makeListCompatible( logger ) for logger in _loggers )
 lg.info, lg.output, lg.warning, lg.error, lg.debug = _loggers
-info, output, warning, error, debug = _loggers
+info, output, warning, error, debug = _loggers # This darn thing breaks the best practice of formatting log strings :(
 warn = warning  # alternate/old name
 setLogLevel = lg.setLogLevel
+
