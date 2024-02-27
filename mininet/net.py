@@ -99,6 +99,9 @@ from time import sleep
 from itertools import chain, groupby
 from math import ceil
 
+import sys
+sys.path.insert(0, '/fault_controllers')
+
 from mininet.cli import CLI
 from mininet.fault_controllers.BaseFaultController import BaseFaultControllerStarter
 from mininet.fault_controllers.ConfigFileFaultController import ConfigFileFaultControllerStarter

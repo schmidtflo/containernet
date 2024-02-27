@@ -198,9 +198,9 @@ function mn_deps {
         $install cgroup-tools || $install cgroup-bin
     fi
 
-    echo "Installing Faultynet core"
+    echo "Installing Containernet/Faultynet core"
     pushd $MININET_DIR/containernet
-    sudo PYTHON=${PYTHON} make install
+    sudo PYTHON=../venv/bin/python make install
     popd
 }
 

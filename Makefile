@@ -2,7 +2,7 @@ MININET = mininet/*.py
 TEST = mininet/test/*.py
 EXAMPLES = mininet/examples/*.py
 MN = bin/mn
-PYTHON ?= python3
+PYTHON = ../venv/bin/python3
 PYMN = $(PYTHON) -B bin/mn
 BIN = $(MN)
 PYSRC = $(MININET) $(TEST) $(EXAMPLES) $(BIN)
@@ -48,7 +48,7 @@ slowtest: $(MININET)
 
 mnexec: mnexec.c $(MN) mininet/net.py
 	$(CC) $(CFLAGS) $(LDFLAGS) \
-	-DVERSION=\"`PYTHONPATH=. XTABLES_LIBDIR=/usr/lib/x86_64-linux-gnu/xtables $(PYMN) --version 2>&1`\" $< -o $@
+	-DVERSION=\"`PYTHONPATH=. XTABLES_LIBDIR=/usr/lib/x86_64-linux-gnu/xtables $(PYMN) --version | awk '{print $2}' 2>&1`\" $< -o $@
 
 install-mnexec: $(MNEXEC)
 	install -D $(MNEXEC) $(BINDIR)/$(MNEXEC)
